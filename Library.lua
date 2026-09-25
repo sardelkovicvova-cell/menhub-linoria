@@ -7241,41 +7241,45 @@ function Library:CreateWindow(...)
 
         local TabButtonWidth = Library:GetTextBounds(Tab.Name, Library.Font, 16)
 
-        -- MenHub-style tabs: text + underline indicator (no box borders)
+        -- Tab as rounded rectangle; selected = lighter fill
         local TabButton = Library:Create("Frame", {
-            BackgroundTransparency = 1;
+            BackgroundColor3 = Color3.fromRGB(22, 22, 22);
             BorderSizePixel = 0;
-            Size = UDim2.new(0, TabButtonWidth + 16, 1, 0);
+            Size = UDim2.new(0, TabButtonWidth + 18, 0, 22);
             ZIndex = 1;
             Parent = TabArea;
         })
 
-        Library:AddToRegistry(TabButton, {})
+        Library:Create("UICorner", {
+            CornerRadius = UDim.new(0, 4);
+            Parent = TabButton;
+        })
+
+        Library:AddToRegistry(TabButton, {
+            BackgroundColor3 = "BackgroundColor";
+        })
 
         local TabButtonLabel = Library:CreateLabel({
             Position = UDim2.new(0, 0, 0, 0);
-            Size = UDim2.new(1, 0, 1, -2);
+            Size = UDim2.new(1, 0, 1, 0);
             Text = Tab.Name;
-            TextColor3 = Color3.fromRGB(110, 110, 110);
-            TextSize = 14;
-            ZIndex = 1;
+            TextColor3 = Color3.fromRGB(130, 130, 130);
+            TextSize = 13;
+            ZIndex = 2;
             Parent = TabButton;
         })
 
-        -- underline indicator under active tab
+        -- kept for compatibility with ShowTab/HideTab (hidden)
         local Blocker = Library:Create("Frame", {
-            BackgroundColor3 = Library.FontColor;
-            BorderSizePixel = 0;
-            Position = UDim2.new(0.1, 0, 1, -2);
-            Size = UDim2.new(0.8, 0, 0, 2);
             BackgroundTransparency = 1;
-            ZIndex = 3;
+            BorderSizePixel = 0;
+            Size = UDim2.new(0, 0, 0, 0);
+            Visible = false;
+            ZIndex = 0;
             Parent = TabButton;
         })
 
-        Library:AddToRegistry(Blocker, {
-            BackgroundColor3 = "FontColor";
-        })
+        Library:AddToRegistry(Blocker, {})
 
         local TabFrame = Library:Create("Frame", {
             Name = "TabFrame",
@@ -7535,10 +7539,14 @@ end
                 Tab:HideTab()
             end
 
-            Blocker.BackgroundTransparency = 0
-            TabButtonLabel.TextColor3 = Library.FontColor
+            -- selected: lighter rectangle + bright text
+            TabButton.BackgroundColor3 = Color3.fromRGB(48, 48, 48)
+            if Library.RegistryMap[TabButton] then
+                Library.RegistryMap[TabButton].Properties.BackgroundColor3 = nil
+            end
+            TabButtonLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
             if Library.RegistryMap[TabButtonLabel] then
-                Library.RegistryMap[TabButtonLabel].Properties.TextColor3 = "FontColor"
+                Library.RegistryMap[TabButtonLabel].Properties.TextColor3 = nil
             end
             TabFrame.Visible = true
 
@@ -7547,8 +7555,12 @@ end
         Tab.Show = Tab.ShowTab
 
         function Tab:HideTab()
-            Blocker.BackgroundTransparency = 1
-            TabButtonLabel.TextColor3 = Color3.fromRGB(110, 110, 110)
+            -- unselected: darker rectangle + muted text
+            TabButton.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+            if Library.RegistryMap[TabButton] then
+                Library.RegistryMap[TabButton].Properties.BackgroundColor3 = nil
+            end
+            TabButtonLabel.TextColor3 = Color3.fromRGB(130, 130, 130)
             if Library.RegistryMap[TabButtonLabel] then
                 Library.RegistryMap[TabButtonLabel].Properties.TextColor3 = nil
             end
@@ -7571,7 +7583,7 @@ end
 
                 local TabButtonWidth = Library:GetTextBounds(Tab.Name, Library.Font, 16)
 
-                TabButton.Size = UDim2.new(0, TabButtonWidth + 16, 1, 0)
+                TabButton.Size = UDim2.new(0, TabButtonWidth + 18, 0, 22)
                 TabButtonLabel.Text = Tab.Name
             end
         end
