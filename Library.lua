@@ -7241,39 +7241,40 @@ function Library:CreateWindow(...)
 
         local TabButtonWidth = Library:GetTextBounds(Tab.Name, Library.Font, 16)
 
+        -- MenHub-style tabs: text + underline indicator (no box borders)
         local TabButton = Library:Create("Frame", {
-            BackgroundColor3 = Library.BackgroundColor;
-            BorderColor3 = Library.OutlineColor;
-            Size = UDim2.new(0, TabButtonWidth + 8 + 4, 0.85, 0);
+            BackgroundTransparency = 1;
+            BorderSizePixel = 0;
+            Size = UDim2.new(0, TabButtonWidth + 16, 1, 0);
             ZIndex = 1;
             Parent = TabArea;
         })
 
-        Library:AddToRegistry(TabButton, {
-            BackgroundColor3 = "BackgroundColor";
-            BorderColor3 = "OutlineColor";
-        })
+        Library:AddToRegistry(TabButton, {})
 
         local TabButtonLabel = Library:CreateLabel({
             Position = UDim2.new(0, 0, 0, 0);
-            Size = UDim2.new(1, 0, 1, -1);
+            Size = UDim2.new(1, 0, 1, -2);
             Text = Tab.Name;
+            TextColor3 = Color3.fromRGB(110, 110, 110);
+            TextSize = 14;
             ZIndex = 1;
             Parent = TabButton;
         })
 
+        -- underline indicator under active tab
         local Blocker = Library:Create("Frame", {
-            BackgroundColor3 = Library.MainColor;
+            BackgroundColor3 = Library.FontColor;
             BorderSizePixel = 0;
-            Position = UDim2.new(0, 0, 1, 0);
-            Size = UDim2.new(1, 0, 0, 1);
+            Position = UDim2.new(0.1, 0, 1, -2);
+            Size = UDim2.new(0.8, 0, 0, 2);
             BackgroundTransparency = 1;
             ZIndex = 3;
             Parent = TabButton;
         })
 
         Library:AddToRegistry(Blocker, {
-            BackgroundColor3 = "MainColor";
+            BackgroundColor3 = "FontColor";
         })
 
         local TabFrame = Library:Create("Frame", {
@@ -7535,8 +7536,10 @@ end
             end
 
             Blocker.BackgroundTransparency = 0
-            TabButton.BackgroundColor3 = Library.MainColor
-            Library.RegistryMap[TabButton].Properties.BackgroundColor3 = "MainColor"
+            TabButtonLabel.TextColor3 = Library.FontColor
+            if Library.RegistryMap[TabButtonLabel] then
+                Library.RegistryMap[TabButtonLabel].Properties.TextColor3 = "FontColor"
+            end
             TabFrame.Visible = true
 
             Tab:Resize()
@@ -7545,8 +7548,10 @@ end
 
         function Tab:HideTab()
             Blocker.BackgroundTransparency = 1
-            TabButton.BackgroundColor3 = Library.BackgroundColor
-            Library.RegistryMap[TabButton].Properties.BackgroundColor3 = "BackgroundColor"
+            TabButtonLabel.TextColor3 = Color3.fromRGB(110, 110, 110)
+            if Library.RegistryMap[TabButtonLabel] then
+                Library.RegistryMap[TabButtonLabel].Properties.TextColor3 = nil
+            end
             TabFrame.Visible = false
         end
         Tab.Hide = Tab.HideTab
@@ -7566,7 +7571,7 @@ end
 
                 local TabButtonWidth = Library:GetTextBounds(Tab.Name, Library.Font, 16)
 
-                TabButton.Size = UDim2.new(0, TabButtonWidth + 8 + 4, 0.85, 0)
+                TabButton.Size = UDim2.new(0, TabButtonWidth + 16, 1, 0)
                 TabButtonLabel.Text = Tab.Name
             end
         end
