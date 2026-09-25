@@ -311,7 +311,7 @@ else
     Library.IsMobile = (Library.DevicePlatform == Enum.Platform.Android or Library.DevicePlatform == Enum.Platform.IOS)
 end
 
-Library.MinSize = if Library.IsMobile then Vector2.new(550, 200) else Vector2.new(550, 300)
+Library.MinSize = if Library.IsMobile then Vector2.new(150, 100) else Vector2.new(120, 80)
 
 --// Functions \\--
 local function ApplyDPIScale(Position)
@@ -470,7 +470,7 @@ function Library:SetDPIScale(value: number)
     assert(type(value) == "number", "Expected type number for DPI scale but got " .. typeof(value))
     
     DPIScale = value / 100
-    Library.MinSize = (if Library.IsMobile then Vector2.new(550, 200) else Vector2.new(550, 300)) * DPIScale
+    Library.MinSize = (if Library.IsMobile then Vector2.new(150, 100) else Vector2.new(120, 80)) * DPIScale
 end
 
 function Library:SafeCallback(Func, ...)
@@ -741,7 +741,16 @@ function Library:MakeResizable(Instance, MinSize)
     ResizerImage.MouseMoved:Connect(function()
         if OffsetPos then		
             local MousePos = Vector2.new(Mouse.X - OffsetPos.X, Mouse.Y - OffsetPos.Y)
-            local FinalSize = Vector2.new(math.clamp(MousePos.X - Instance.AbsolutePosition.X, MinSize.X, math.huge), math.clamp(MousePos.Y - Instance.AbsolutePosition.Y, MinSize.Y, math.huge))
+            -- No practical min/max size limits (soft floor only so window stays usable)
+            local Floor = Vector2.new(80, 50)
+            local MinX = (MinSize and MinSize.X) or Floor.X
+            local MinY = (MinSize and MinSize.Y) or Floor.Y
+            if MinX > Floor.X then MinX = Floor.X end
+            if MinY > Floor.Y then MinY = Floor.Y end
+            local FinalSize = Vector2.new(
+                math.clamp(MousePos.X - Instance.AbsolutePosition.X, MinX, math.huge),
+                math.clamp(MousePos.Y - Instance.AbsolutePosition.Y, MinY, math.huge)
+            )
             Instance.Size = UDim2.fromOffset(FinalSize.X, FinalSize.Y)
         end
     end)
@@ -1134,7 +1143,8 @@ local Templates = { -- TO-DO: do it for missing elements.
         NotifySide = "Left",
         ShowCustomCursor = true,
         UnlockMouseWhileOpen = true,
-        Center = false
+        Center = false,
+        Resizable = true, -- drag bottom-right corner to resize
     },
 
     --// Elements \\--
@@ -6572,7 +6582,7 @@ function Library:CreateWindow(...)
     })
     LibraryMainOuterFrame = Outer
     Library:MakeDraggable(Outer, 25, true)
-    if WindowInfo.Resizable then Library:MakeResizable(Outer, Library.MinSize) end
+    if WindowInfo.Resizable then Library:MakeResizable(Outer, Vector2.new(80, 50)) end
 
     local Inner = Library:Create("Frame", {
         BackgroundColor3 = Library.MainColor;
