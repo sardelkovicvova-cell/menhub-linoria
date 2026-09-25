@@ -6528,6 +6528,236 @@ do
 
         return Data
     end
+
+
+    -- ==================== UE-style Hit Notify ====================
+    Library.HitNotifyConfig = {
+        Transparency = 0.15,          -- 0 = opaque, 1 = invisible
+        Duration = 3,
+        MaxVisible = 6,
+        Position = "Right",           -- Left / Right
+        AccentColor = nil,            -- nil = use Library.AccentColor
+        TextColor = nil,              -- nil = use Library.FontColor
+        OffsetX = 12,
+        OffsetY = 80,
+        Width = 260,
+    }
+
+    Library._HitNotifyHolder = nil
+    Library._HitNotifyCount = 0
+
+    function Library:SetHitNotifyTransparency(t)
+        t = tonumber(t) or 0.15
+        Library.HitNotifyConfig.Transparency = math.clamp(t, 0, 1)
+    end
+
+    function Library:SetHitNotifyConfig(cfg)
+        if typeof(cfg) ~= "table" then return end
+        for k, v in pairs(cfg) do
+            Library.HitNotifyConfig[k] = v
+        end
+        -- rebuild holder position if needed
+        if Library._HitNotifyHolder then
+            local c = Library.HitNotifyConfig
+            local side = string.lower(tostring(c.Position or "Right"))
+            if side == "left" then
+                Library._HitNotifyHolder.AnchorPoint = Vector2.new(0, 0)
+                Library._HitNotifyHolder.Position = UDim2.new(0, c.OffsetX or 12, 0, c.OffsetY or 80)
+            else
+                Library._HitNotifyHolder.AnchorPoint = Vector2.new(1, 0)
+                Library._HitNotifyHolder.Position = UDim2.new(1, -(c.OffsetX or 12), 0, c.OffsetY or 80)
+            end
+        end
+    end
+
+    local function EnsureHitNotifyHolder()
+        if Library._HitNotifyHolder and Library._HitNotifyHolder.Parent then
+            return Library._HitNotifyHolder
+        end
+        local c = Library.HitNotifyConfig
+        local side = string.lower(tostring(c.Position or "Right"))
+        local holder = Library:Create("Frame", {
+            Name = "HitNotifyHolder",
+            BackgroundTransparency = 1,
+            Size = UDim2.new(0, c.Width or 260, 1, -((c.OffsetY or 80) + 20)),
+            ZIndex = 12000,
+            Parent = Library.ScreenGui or ScreenGui,
+        })
+        if side == "left" then
+            holder.AnchorPoint = Vector2.new(0, 0)
+            holder.Position = UDim2.new(0, c.OffsetX or 12, 0, c.OffsetY or 80)
+        else
+            holder.AnchorPoint = Vector2.new(1, 0)
+            holder.Position = UDim2.new(1, -(c.OffsetX or 12), 0, c.OffsetY or 80)
+        end
+        Library:Create("UIListLayout", {
+            Padding = UDim.new(0, 6),
+            FillDirection = Enum.FillDirection.Vertical,
+            HorizontalAlignment = side == "left" and Enum.HorizontalAlignment.Left or Enum.HorizontalAlignment.Right,
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Parent = holder,
+        })
+        Library._HitNotifyHolder = holder
+        return holder
+    end
+
+    --[[
+        Library:HitNotify({
+            Name = "PlayerName",       -- or Title
+            Damage = 25,               -- number or string
+            Text = nil,                -- optional custom body line
+            Duration = 3,
+            Transparency = 0.15,       -- override global
+            Color = Color3.fromRGB(...), -- accent bar / name color
+            HitPart = "Head",          -- optional
+        })
+        -- or: Library:HitNotify("PlayerName", 25, 3)
+    ]]
+    function Library:HitNotify(...)
+        local Info = select(1, ...)
+        local cfg = Library.HitNotifyConfig
+        local data = {}
+
+        if typeof(Info) == "table" then
+            data.Name = tostring(Info.Name or Info.Title or "Hit")
+            data.Damage = Info.Damage
+            data.Text = Info.Text or Info.Description
+            data.Duration = Info.Duration or Info.Time or cfg.Duration or 3
+            data.Transparency = Info.Transparency
+            if data.Transparency == nil then data.Transparency = cfg.Transparency end
+            data.Color = Info.Color or Info.AccentColor or cfg.AccentColor or Library.AccentColor
+            data.HitPart = Info.HitPart
+        else
+            data.Name = tostring(Info or "Hit")
+            data.Damage = select(2, ...)
+            data.Duration = select(3, ...) or cfg.Duration or 3
+            data.Transparency = cfg.Transparency
+            data.Color = cfg.AccentColor or Library.AccentColor
+        end
+
+        data.Transparency = math.clamp(tonumber(data.Transparency) or 0.15, 0, 0.95)
+        local duration = tonumber(data.Duration) or 3
+        local width = cfg.Width or 260
+        local height = 42
+
+        local holder = EnsureHitNotifyHolder()
+
+        -- trim excess
+        local kids = {}
+        for _, ch in ipairs(holder:GetChildren()) do
+            if ch:IsA("Frame") and ch.Name == "HitNotify" then
+                table.insert(kids, ch)
+            end
+        end
+        local maxV = cfg.MaxVisible or 6
+        while #kids >= maxV do
+            local old = table.remove(kids, 1)
+            pcall(function() old:Destroy() end)
+        end
+
+        local bgAlpha = data.Transparency
+        local frame = Library:Create("Frame", {
+            Name = "HitNotify",
+            BackgroundColor3 = Color3.fromRGB(12, 12, 12),
+            BackgroundTransparency = bgAlpha,
+            BorderSizePixel = 0,
+            Size = UDim2.new(0, width, 0, height),
+            ZIndex = 12001,
+            ClipsDescendants = true,
+            Parent = holder,
+        })
+        Library:Create("UICorner", {
+            CornerRadius = UDim.new(0, 3),
+            Parent = frame,
+        })
+        Library:Create("UIStroke", {
+            Color = Color3.fromRGB(40, 40, 40),
+            Thickness = 1,
+            Transparency = bgAlpha * 0.5,
+            Parent = frame,
+        })
+
+        -- accent bar (left)
+        local bar = Library:Create("Frame", {
+            BackgroundColor3 = data.Color,
+            BackgroundTransparency = bgAlpha * 0.3,
+            BorderSizePixel = 0,
+            Size = UDim2.new(0, 3, 1, 0),
+            ZIndex = 12002,
+            Parent = frame,
+        })
+
+        local nameLabel = Library:Create("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 12, 0, 4),
+            Size = UDim2.new(1, -20, 0, 16),
+            Font = Library.Font or Enum.Font.Code,
+            Text = data.Name,
+            TextColor3 = data.Color,
+            TextSize = 13,
+            TextTransparency = bgAlpha * 0.2,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 12003,
+            Parent = frame,
+        })
+
+        local line = data.Text
+        if not line then
+            local parts = {}
+            if data.Damage ~= nil then
+                parts[#parts + 1] = tostring(data.Damage) .. " dmg"
+            end
+            if data.HitPart then
+                parts[#parts + 1] = tostring(data.HitPart)
+            end
+            line = #parts > 0 and table.concat(parts, "  ·  ") or "Hit"
+        end
+
+        local descLabel = Library:Create("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 12, 0, 20),
+            Size = UDim2.new(1, -20, 0, 16),
+            Font = Library.Font or Enum.Font.Code,
+            Text = line,
+            TextColor3 = cfg.TextColor or Library.FontColor,
+            TextSize = 12,
+            TextTransparency = 0.15 + bgAlpha * 0.5,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 12003,
+            Parent = frame,
+        })
+
+        -- progress / lifetime bar at bottom
+        local life = Library:Create("Frame", {
+            BackgroundColor3 = data.Color,
+            BackgroundTransparency = 0.35 + bgAlpha * 0.4,
+            BorderSizePixel = 0,
+            Position = UDim2.new(0, 0, 1, -2),
+            Size = UDim2.new(1, 0, 0, 2),
+            ZIndex = 12004,
+            Parent = frame,
+        })
+
+        -- slide in
+        frame.Size = UDim2.new(0, 0, 0, height)
+        pcall(function()
+            frame:TweenSize(UDim2.new(0, width, 0, height), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25, true)
+        end)
+        pcall(function()
+            life:TweenSize(UDim2.new(0, 0, 0, 2), Enum.EasingDirection.In, Enum.EasingStyle.Linear, duration, true)
+        end)
+
+        task.delay(duration, function()
+            if not frame or not frame.Parent then return end
+            pcall(function()
+                frame:TweenSize(UDim2.new(0, 0, 0, height), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.25, true)
+            end)
+            task.wait(0.28)
+            pcall(function() frame:Destroy() end)
+        end)
+
+        return frame
+    end
 end
 
 --// Window \\--
